@@ -1,62 +1,97 @@
-# Clarity AI
+# Vsearch
 
-Clarity is simple [perplexity.ai](https://www.perplexity.ai/) clone. Use the code for whatever you like! :)
+Vsearch is an advanced AI-powered search engine that provides accurate answers with cited sources. It's inspired by [perplexity.ai](https://www.perplexity.ai/) but uses the Cerebras API with the llama-4-scout-17b-16e-instruct model for processing data and generating AI responses.
 
-If you have any questions, feel free to reach out to me on [Twitter](https://twitter.com/mckaywrigley).
+[![Vsearch](./public/screenshot.png)](https://vsearch.vercel.app/)
 
-[![Clarity AI](./public/screenshot.png)](https://clarity-ai.vercel.app/)
+## Features
+
+- **Multiple Search Engines**: Get results from Google, Bing, DuckDuckGo, or all combined
+- **Advanced Web Scraping**: Intelligent content extraction with multiple techniques
+- **Source Citations**: All answers include citations to original sources
+- **Follow-up Questions**: Ask follow-up questions in a conversational interface
+- **Dark/Light Mode**: Choose your preferred theme or use system settings
+- **Voice Input**: Search using voice commands
+- **Mobile Responsive**: Works great on all devices
 
 ## How It Works
 
-Given a query, Clarity fetches relevant, up-to-date information from the web and uses OpenAI's API to generate an answer.
+Vsearch provides accurate, up-to-date information by combining web search with AI processing:
 
-The app works as follows:
+1. User submits a query (text or voice)
+2. Vsearch fetches results from selected search engines
+3. Advanced web scraping extracts relevant content from sources
+4. Content is processed and prioritized based on quality
+5. The Cerebras llama-4-scout model generates a comprehensive answer with citations
+6. Results are displayed with links to original sources
+7. Users can ask follow-up questions to continue the conversation
 
-1. Get query from user
-2. Scrape Google for relevant webpages
-3. Parse webpages for text
-4. Build prompt using query + webpage text
-5. Call OpenAI API to generate answer
-6. Stream answer back to user
+## Architecture
 
-## Requirements
+The application is built with a modular architecture:
 
-Get OpenAI API key [here](https://openai.com/api/).
+- **Frontend**: Next.js with TypeScript and Tailwind CSS
+- **Backend**: Next.js API routes for server-side processing
+- **AI Integration**: Cerebras API with llama-4-scout-17b-16e-instruct model
+- **Search**: Custom implementations for Google, Bing, and DuckDuckGo
+- **Content Extraction**: Multiple techniques for different website types
+- **Error Handling**: Robust fallback mechanisms and recovery
 
 ## Running Locally
 
-1. Clone repo
+1. Clone the repository
 
 ```bash
-git clone https://github.com/mckaywrigley/clarity-ai.git
+git clone https://github.com/Hadi-jawdi/Vsearch.git
+cd Vsearch
 ```
 
 2. Install dependencies
 
 ```bash
-npm i
+npm install
 ```
 
-3. Run app
+3. Run the development server
 
 ```bash
 npm run dev
 ```
 
-## Improvement Ideas
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-Here are some ideas for how to improve Clarity:
+## Key Components
 
-- [ ] Speed up answers by replacing link scraping with the Google Search API (scraping was used to circumvent cost + rate limits)
-- [ ] Add "follow up" searches
-- [ ] Improve the prompt
-- [ ] Get sources working in non text-davinci-003 models
-- [ ] Train your own model to use for answer synthesis
+- **Search Engines**: Modular implementations for Google, Bing, and DuckDuckGo
+- **Content Extraction**: Multiple techniques for different website types
+- **Web Scraping**: Advanced scraping with error handling and fallbacks
+- **User Preferences**: Theme and search engine preferences
+- **History Management**: Save and retrieve search history
+
+## Technologies Used
+
+- **Next.js**: React framework for frontend and API routes
+- **TypeScript**: Type-safe code
+- **Tailwind CSS**: Utility-first CSS framework
+- **Cerebras API**: AI model for answer generation
+- **Cheerio**: HTML parsing for web scraping
+- **JSDOM**: DOM implementation for content extraction
+- **Mozilla Readability**: Content extraction algorithm
+
+## Future Improvements
+
+- [ ] Add more search engines
+- [ ] Implement search history synchronization
+- [ ] Enhance mobile experience
+- [ ] Add export functionality for answers
+- [ ] Implement user accounts for personalized experience
+- [ ] Add more language support
 
 ## Credits
 
-Shoutout to [Perplexity AI](https://www.perplexity.ai/) for the inspiration. I highly recommend checking their product out.
+This project is a fork of [Clarity AI](https://github.com/mckaywrigley/clarity-ai) by McKay Wrigley, with significant enhancements and modifications.
 
-This repo is meant to show people that you can build powerful apps like Perplexity even if you don't have a large, experienced team.
-
-LLMs are amazing, and I hope Clarity inspires you to build something cool!
+Special thanks to:
+- [Cerebras](https://www.cerebras.net/) for their powerful llama-4-scout model
+- [Mozilla Readability](https://github.com/mozilla/readability) for content extraction
+- [Perplexity AI](https://www.perplexity.ai/) for the inspiration
