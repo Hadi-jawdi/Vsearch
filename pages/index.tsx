@@ -1,10 +1,11 @@
-import { Answer } from "@/components/Answer";
-import { Search } from "@/components/Search";
-import { SearchQuery } from "@/types";
-import { initTheme } from "@/utils/theme";
+import { Answer } from "../components/Answer";
+import { Search } from "../components/Search";
+import { SearchQuery } from "../types";
+import { initTheme } from "../utils/theme";
 import { IconBrandGithub } from "@tabler/icons-react";
 import Head from "next/head";
 import { useEffect, useState } from "react";
+import DropdownMenu from "../components/DropdownMenu";
 
 export default function Home() {
   // State for search and answer
@@ -69,16 +70,10 @@ export default function Home() {
       </Head>
 
       <div className="min-h-screen bg-gray-50 dark:bg-[#18181C] text-gray-900 dark:text-[#D4D4D8] transition-colors duration-300">
-        {/* GitHub link */}
-        <a
-          className="absolute top-0 right-2 p-4 cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
-          href="https://github.com/mckaywrigley/clarity-ai"
-          target="_blank"
-          rel="noreferrer"
-          title="View on GitHub"
-        >
-          <IconBrandGithub size={24} />
-        </a>
+        {/* Dropdown menu at bottom left */}
+        <div className="fixed bottom-4 left-4 z-50">
+          <DropdownMenu />
+        </div>
 
         {/* Main content */}
         {answer ? (
