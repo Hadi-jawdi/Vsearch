@@ -27,7 +27,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   const [query, setQuery] = useState<string>("");
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>("google");
+  const [searchEngine, setSearchEngine] = useState<SearchEngine>("all");
   const [conversationId, setConversationId] = useState<string>("");
 
   // State for UI
@@ -193,7 +193,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
     // Save preferences
     saveUserPreferences({
       theme,
-      defaultSearchEngine: searchEngine
+      defaultSearchEngine: "all" // Always save "all" as the default
     });
 
     // Apply theme
@@ -206,7 +206,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
 
   // Reset settings to defaults
   const handleResetSettings = () => {
-    setSearchEngine("google");
+    setSearchEngine("all");
     setThemeState("system");
   };
 
@@ -264,8 +264,8 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
     // Get user preferences
     const preferences = getUserPreferences();
 
-    // Set search engine from preferences
-    setSearchEngine(preferences.defaultSearchEngine as SearchEngine || "google");
+    // Set search engine to "all" by default
+    setSearchEngine("all");
 
     // Set theme from preferences
     setThemeState(preferences.theme);
@@ -378,19 +378,6 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
               <h3 className="text-lg font-medium border-b border-gray-200 dark:border-zinc-700 pb-2">Settings</h3>
 
               <div className="space-y-4 pt-2">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Search Engine</label>
-                  <select
-                    className="w-full rounded-md border border-gray-300 dark:border-zinc-600 bg-white dark:bg-[#18181C] p-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm"
-                    value={searchEngine}
-                    onChange={(e) => setSearchEngine(e.target.value as SearchEngine)}
-                  >
-                    <option value="google">Google</option>
-                    <option value="bing">Bing</option>
-                    <option value="duckduckgo">DuckDuckGo</option>
-                    <option value="all">All Engines (Combined Results)</option>
-                  </select>
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">Theme</label>
