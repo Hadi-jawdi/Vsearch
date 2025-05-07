@@ -1,5 +1,6 @@
 import { SearchEngine } from "@/pages/api/sources";
 import { SearchMetadata, SearchQuery, Source, Theme } from "@/types";
+import SearchSkeleton, { SearchStage } from "./SearchSkeleton";
 import { generateId, getUserPreferences, saveUserPreferences } from "@/utils/history";
 import { applyTheme, setTheme } from "@/utils/theme";
 import {
@@ -27,6 +28,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   const [query, setQuery] = useState<string>("");
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [currentSearchStage, setCurrentSearchStage] = useState<SearchStage>('idle');
   const [searchEngine, setSearchEngine] = useState<SearchEngine>("all");
   const [conversationId, setConversationId] = useState<string>("");
 
@@ -35,6 +37,42 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [searchMetadata, setSearchMetadata] = useState<SearchMetadata | null>(null);
   const [isListening, setIsListening] = useState<boolean>(false);
+
+  // Fetch AI-generated queries from /api/generate-queries
+  const fetchGeneratedQueries = async (originalQuery: string): Promise<string[]> => {
+    try {
+      console.log(`Fetching generated queries for: ${originalQuery}`);
+      const response = await fetch("/api/generate-queries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: originalQuery })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to generate queries:", response.status, errorData.error);
+        // Return an empty array or throw an error, depending on desired handling
+        // For now, let's return a few generic fallbacks or an empty array
+        // to allow the main search to proceed if sub-query generation fails.
+        // throw new Error(`Failed to generate queries: ${errorData.error || response.statusText}`);
+        console.warn(`Failed to generate sub-queries for "${originalQuery}". Proceeding with original query only or generic fallbacks.`);
+        // Optionally return a few very generic queries if the API fails
+        // return [`what is ${originalQuery}`, `define ${originalQuery}`].slice(0,2);
+        return []; // Or return empty to just use the main query
+      }
+
+      const data = await response.json();
+      if (data.queries && Array.isArray(data.queries)) {
+        return data.queries as string[];
+      }
+      console.warn('Generated queries response was not in the expected format:', data);
+      return []; // Return empty if format is not as expected
+    } catch (error) {
+      console.error("Error in fetchGeneratedQueries:", error);
+      // Return empty or throw, similar to the !response.ok case
+      return [];
+    }
+  };
 
   // Handle search submission
   const handleSearch = async () => {
@@ -45,50 +83,84 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
     }
 
     setLoading(true);
+    setCurrentSearchStage('generating_queries');
     setErrorMessage("");
 
-    // Generate a conversation ID if this is a new conversation
     if (!conversationId) {
       setConversationId(generateId());
     }
 
     try {
-      const { sources, metadata } = await fetchSources();
+      // Step 1: Generate related queries from the main query
+      setCurrentSearchStage('generating_queries');
+      const generatedQueries = await fetchGeneratedQueries(query);
+      console.log("Generated sub-queries:", generatedQueries);
 
-      if (sources.length === 0) {
+      setCurrentSearchStage('fetching_sources');
+      let allSources: Source[] = [];
+      // We'll use the metadata from the first successful fetch for now, or aggregate if needed
+      let primaryMetadata: SearchMetadata | null = null; 
+
+      // Step 2: Fetch sources for the original query and each generated query
+      // Ensure 'query' (original user query) is always included
+      const queriesToFetch = [query, ...generatedQueries.filter(q => q !== query)]; // Add original query and unique generated ones
+
+      for (const q of queriesToFetch) {
+        try {
+          console.log(`Fetching sources for query: "${q}"`);
+          const { sources, metadata } = await fetchSources(q); // Pass the specific query 'q'
+          if (sources.length > 0) {
+            allSources = allSources.concat(sources);
+            if (!primaryMetadata && metadata) { // Store the first valid metadata
+              primaryMetadata = metadata;
+            }
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch sources for sub-query "${q}":`, err);
+          // Optionally, inform the user or just proceed with other sources
+        }
+      }
+
+      // Deduplicate sources based on URL to avoid redundant information
+      const uniqueSources = Array.from(new Map(allSources.map(s => [s.url, s])).values());
+      console.log("Total unique sources found:", uniqueSources.length);
+
+      if (uniqueSources.length === 0) {
         setLoading(false);
-        setErrorMessage("No relevant sources found. Please try a different query or search engine.");
+        setErrorMessage("No relevant sources found even after query expansion. Please try a different query or search engine.");
         return;
       }
 
-      setSearchMetadata(metadata || null);
+      setSearchMetadata(primaryMetadata || null); // Use the stored primary metadata
 
-      // Check if we're using a fallback source
-      const isFallback = metadata?.fallback === true;
-
+      // Determine fallback status based on the primary metadata
+      const isFallback = primaryMetadata?.fallback === true;
       if (isFallback) {
-        console.log("Using fallback source due to extraction issues");
+        console.log("Using fallback source due to extraction issues (based on primary query).");
       }
 
-      await processAnswer(sources, isFallback);
-    } catch (error) {
-      console.error("Search error:", error);
+      setCurrentSearchStage('synthesizing_answer');
+      await processAnswer(uniqueSources, isFallback); // Pass all unique sources
+    } catch (error: any) { 
+      setCurrentSearchStage('idle');
+      console.error("Search error in handleSearch:", error);
       setLoading(false);
-      setErrorMessage("Error fetching sources. Please try again with a different query or search engine.");
+      const errorMessageText = error.message || "An unexpected error occurred during search.";
+      setErrorMessage(`Error during enhanced search: ${errorMessageText}. Please try again.`);
     }
   };
 
   // Fetch sources from API
-  const fetchSources = async () => {
+  const fetchSources = async (currentQuery: string = query) => { // MODIFIED: Added currentQuery parameter
     const response = await fetch("/api/sources", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        query,
+        query: currentQuery, // MODIFIED: Use currentQuery
         searchEngine,
-        sourceCount: 6 // Request more sources for better results
+        sourceCount: 3 // MODIFIED: Request fewer sources per sub-query
       })
     });
 
@@ -170,6 +242,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       if (data.content) {
         onAnswerUpdate(data.content);
         onDone(true);
+        setCurrentSearchStage('idle');
       } else if (data.error) {
         throw new Error(data.error);
       }
@@ -178,6 +251,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
       setLoading(false);
       setErrorMessage(err.message || "Error processing your request. Please try again.");
       onAnswerUpdate("Error processing your request. Please try again.");
+      setCurrentSearchStage('idle');
     }
   };
 
@@ -280,15 +354,7 @@ export const Search: FC<SearchProps> = ({ onSearch, onAnswerUpdate, onDone }) =>
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#18181C] text-gray-900 dark:text-[#D4D4D8] transition-colors duration-300">
       {loading ? (
-        <div className="flex items-center justify-center pt-64 sm:pt-72 flex-col">
-          <div className="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <div className="mt-8 text-2xl">Searching for answers...</div>
-          {searchMetadata && (
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-              Using {searchMetadata.engine} search engine
-            </div>
-          )}
-        </div>
+        <SearchSkeleton currentStage={currentSearchStage} />
       ) : (
         <div className="mx-auto flex h-full w-full max-w-[800px] flex-col items-center space-y-6 px-4 pt-20 sm:pt-40">
           {/* Logo and title */}
